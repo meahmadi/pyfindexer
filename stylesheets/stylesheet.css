@@ -329,6 +329,16 @@ Full-Width Styles
   background: url(../images/sprite_download.png) no-repeat bottom left;
 }
 
+.exe_download_link {
+  display: block;
+  float: right;
+  width: 90px;
+  height:70px;
+  text-indent: -5000px;
+  overflow: hidden;
+  background: url(../images/exe_icon.png) no-repeat;
+}
+
 .tar_download_link {
   display: block;
   float: right;
@@ -343,6 +353,11 @@ Full-Width Styles
 .zip_download_link:hover {
   background: url(../images/sprite_download.png) no-repeat top left;
 }
+
+.exe_download_link:hover {
+  background: url(../images/exe_icon.png) no-repeat;
+}
+
 
 .tar_download_link:hover {
   background: url(../images/sprite_download.png) no-repeat top right;
