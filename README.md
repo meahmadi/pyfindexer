@@ -1,0 +1,4 @@
+pyfindexer
+==========
+
+Pythonic File Indexer
