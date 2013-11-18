@@ -1,0 +1,1 @@
+fileindexer index --roots . --db fileindices.db 

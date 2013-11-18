@@ -1,0 +1,1 @@
+fileindexer search --db fileindices.db --query indexer_query.txt > indexer.result.txt
