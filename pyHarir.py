@@ -135,13 +135,13 @@ CREATE TABLE "Value3D"(
 """, """CREATE INDEX "fk_Value3D_attr_z1" ON "Value3D"("z1");
 """, """CREATE INDEX "fk_Value3D_attr_id" ON "Value3D"("id");
 ""","", """INSERT INTO "Classes" VALUES('شرکت',0);
-""", """INSERT INTO "Classes" VALUES('TimeResearch',0);
-""", """INSERT INTO "Classes" VALUES('GeneralDatas',0);
-""", """INSERT INTO "Classes" VALUES('Tree',0);
-""", """INSERT INTO "Classes" VALUES('General',0);
-""", """INSERT INTO "Classes" VALUES('BasketItem',0);
-""", """INSERT INTO "Classes" VALUES('Summery',0);
-""", """INSERT INTO "Classes" VALUES('GeneralTools',0);
+""","""INSERT INTO "Classes" VALUES('TimeResearch',0);
+""","""INSERT INTO "Classes" VALUES('GeneralDatas',0);
+""","""INSERT INTO "Classes" VALUES('Tree',0);
+""","""INSERT INTO "Classes" VALUES('General',0);
+""","""INSERT INTO "Classes" VALUES('BasketItem',0);
+""","""INSERT INTO "Classes" VALUES('Summery',0);
+""","""INSERT INTO "Classes" VALUES('GeneralTools',0);
 """, """INSERT INTO "Classes" VALUES('TextView',0);
 """, """INSERT INTO "Classes" VALUES('Tag',0);
 """, """INSERT INTO "Classes" VALUES('GeneralProfile',0);
@@ -361,6 +361,7 @@ CREATE TABLE "Value3D"(
     def clearDb(self):
         self.db.execute("delete from Nodes;")
         self.db.execute("delete from NodeValues;")
+        self.conn.commit()
     def createNode(self):
         node = '{%s}'%(uuid.uuid4());
         self.db.execute("insert into Nodes (`id`,`price`) values ('%s','0');"%node)
@@ -395,13 +396,14 @@ CREATE TABLE "Value3D"(
         clsattr = u"%s->%s"%(cls,attr)
         value = val.replace("'","''")
         
-        indexed = u"N/A" 
-        self.db.execute(u"select ftsMethod from Attributes where `class`='%s' and `name`='%s'"%(cls,attr))
-        results = self.db.fetchall()
-        if(len(results)>0):
-            if results[0][0]!=u"::":
-                indexed = results[0][0]
-        sql = u"insert or replace into NodeValues (`node`,`attr`,`value`,`indexed`) values ('%s','%s','%s%s','%s');"%(node,clsattr,typ,value,indexed)
+#        indexed = u"N/A" 
+#        self.db.execute(u"select ftsMethod from Attributes where `class`='%s' and `name`='%s'"%(cls,attr))
+#        results = self.db.fetchall()
+#        if(len(results)>0):
+#            if results[0][0]!=u"::":
+#                indexed = results[0][0]
+#        sql = u"insert or replace into NodeValues (`node`,`attr`,`value`,`indexed`) values ('%s','%s','%s%s','%s');"%(node,clsattr,typ,value,indexed)
+        sql = u"insert or replace into NodeValues (`node`,`attr`,`value`) values ('%s','%s','%s%s');"%(node,clsattr,typ,value)
         #print sql
         self.db.execute(sql)
         #self.conn.commit()

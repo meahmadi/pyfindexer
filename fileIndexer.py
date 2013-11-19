@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*
+from __future__ import unicode_literals
 import sys,getopt
 import time
 import logging
 import os
 import ast
 import re
+import codecs
 from miette import DocReader
 from stat import *
+
 
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler,FileSystemEventHandler
@@ -42,6 +45,11 @@ def logChanges():
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
+
+def repairPath(fpath):
+    fpath = fpath.replace("\\","/")
+    fpath = fpath.replace("//","/")
+    return fpath
 
 class Indexer(object):
     def __init__(self,paths,dbpath,rootIndex,lastAccessTime):
@@ -91,7 +99,7 @@ class Indexer(object):
 
     def urlOf(self,fpath):
         global currentDrive,CURDIR
-        fpath = fpath.replace("\\","/")
+        fpath = repairPath(fpath)
         url = fpath
         if currentDrive is not None and fpath.startswith(currentDrive):
             url = CURDIR+fpath[2:]
@@ -128,12 +136,12 @@ class Indexer(object):
         document = opendocx(path)
         paratextlist = getdocumenttext(document)
         #return '\n\n'.join([paratext.encode("utf-8") for paratext in paratextlist])
-        return u'\n\n'.join(paratextlist)
+        return '\n\n'.join(paratextlist)
     
     def updateFileProperties(self,fpath,node):
         global roots
         try:
-            st = os.stat(fpath.encode('utf-8'))
+            st = os.stat(fpath)
         except:
             self.harir.delete(node)
             return
@@ -151,48 +159,48 @@ class Indexer(object):
         if register:
             if node is None:
                 node = self.harir.createNode()
-            self.harir.setValue(node,GENERAL,"name", filename)
+            #self.harir.setValue(node,GENERAL,"name", filename)
             self.harir.setValue(node,CLASS,"fileName",filename)
             self.harir.setValue(node,CLASS,"lurl",url)
 
-        if os.path.isdir(fpath.encode('utf-8')):
+        if os.path.isdir(fpath):
             if(len(os.listdir(fpath))>0):
                 self.queue.append({"type":"walktree","event":None,"url":url,"src_path":fpath})
             if register:
                 self.harir.setValue(node,CLASS, "indexState", "-1")
-        elif os.path.isfile(fpath.encode('utf-8')):
-            format = u".".join(filename.split(".")[1:])
+        elif os.path.isfile(fpath):
+            format = ".".join(filename.split(".")[1:])
             self.harir.setValue(node,CLASS,"format",format)
             lastIndexTime = self.harir.value(node,CLASS,"lastIndexTime")
             if ast.literal_eval('0' if lastIndexTime is None else lastIndexTime) < st[ST_MTIME]:
                 try:
                     indexed = False;
-                    if format == u"docx":
+                    if format == "docx":
                         content = self.readDocxContent(fpath)
                         self.harir.setValue(node,CLASS, "fileContent", content)
                         indexed = True
-                    if format == u"doc":
+                    if format == "doc":
                         doc = DocReader(fpath)
                         content = doc.read()
                         self.harir.setValue(node,CLASS, "fileContent", content)
                         indexed = True
-                    if format in [u"html",u"htm",u"xml"]:
+                    if format in ["html","htm","xml"]:
                         content = self.readRawFile(fpath)
                         content = self.unescapeXml(content)
                         content = re.sub('<[^>]*>', '', content)
                         self.harir.setValue(node,CLASS, "fileContent", content)
                         indexed = True
-                    if format in [u"txt",u"tex"]:
+                    if format in ["txt","tex"]:
                         content = self.readRawFile(fpath)
                         self.harir.setValue(node,CLASS, "fileContent", content)
                         indexed = True
-                    if format in [u"zip",u"7z",u"gz",u"rar"]:
+                    if format in ["zip","7z","gz","rar"]:
                         pass
-                    if format in [u"pdf"]:
+                    if format in ["pdf"]:
                         pass
-                    if format in [u"pptx"]:
+                    if format in ["pptx"]:
                         pass
-                    if format in [u"xlsx"]:
+                    if format in ["xlsx"]:
                         pass
                     if indexed:
                         self.harir.setValue(node,CLASS, "lastIndexTime", str(time.time()))
@@ -204,23 +212,23 @@ class Indexer(object):
             relativedir = dirname.replace("\\","/").replace("//","/")
             currentroot = ""
             for root in roots:
-                if relativedir.startswith(root):
+                if relativedir.upper().startswith(root.upper()):
                     relativedir = relativedir[len(root):]
                     currentroot = root
                     break
             
             self.harir.setValue(node,CLASS,"rootPath",currentroot)
-            guidex = re.search("^([/]?([0-9a-f]{32,32}/[0-9]+))", relativedir)
+            guidex = re.search("^([/]?([0-9a-fA-F]{32,32}/[0-9]+))", relativedir)
             if guidex is not None:
                 self.harir.setValue(node,CLASS,"fileId",guidex.group(2))
                 self.harir.setValue(node,CLASS,"url",relativedir[len(guidex.group(1)):])
             else:
-                guidex = re.search("^([/]?([0-9a-f]{32,32}))", relativedir)
+                guidex = re.search("^([/]?([0-9a-fA-F]{32,32}))", relativedir)
                 if guidex is not None:
                     self.harir.setValue(node,CLASS,"fileId",guidex.group(2))
                     self.harir.setValue(node,CLASS,"url",relativedir[len(guidex.group(1)):])
                 else:
-                    idex = re.search("^([/]?(\{[0-9a-f]{8,8}\-[0-9a-f]{4,4}\-[0-9a-f]{4,4}\-[0-9a-f]{4,4}\-[0-9a-f]{12,12}\}))", relativedir)
+                    idex = re.search("^([/]?([\{]?[0-9a-fA-F]{8,8}\-[0-9a-fA-F]{4,4}\-[0-9a-fA-F]{4,4}\-[0-9a-fA-F]{4,4}\-[0-9a-fA-F]{12,12}[\}]?))", relativedir)
                     if idex is not None:
                         self.harir.setValue(node,CLASS,"fileId",idex.group(2))
                         self.harir.setValue(node,CLASS,"url",relativedir[len(idex.group(1)):])
@@ -265,8 +273,8 @@ class Indexer(object):
                 node = self.nodeOf(pathurl)
                 self.updateFileProperties(pathname, node)
         elif ev_type=="deleted":
-            if os.path.isdir(fpath.encode('utf-8')):
-                    self.harir.deleteConditions(u"`attr`='%s->lurl' and `value` like '@string:%s%%'"%(CLASS,url))
+            if os.path.isdir(fpath):
+                    self.harir.deleteConditions("`attr`='%s->lurl' and `value` like '@string:%s%%'"%(CLASS,url))
             if node is not None:
                 self.harir.delete(node)
         elif ev_type=="modified":
@@ -295,6 +303,7 @@ class MyEventHandler(FileSystemEventHandler):
     def on_any_event(self,event):
         global event_handler,indexer,roots
         fpath = os.path.abspath(event.src_path)
+        fpath = repairPath(fpath)
         url = indexer.urlOf(fpath)
         
         if (fpath in roots) or (event.src_path in roots):
@@ -353,6 +362,8 @@ if __name__ == "__main__":
     currentDrive = curpath[:2] if ( len(curpath)>1 and curpath[1]==':' ) else None
     
     signal.signal(signal.SIGTERM, signal_term_handler)
+    
+    #sys.argv = ["fileindexer.py","index","--db","test.db","--roots","dist","--indexroots"]
    
     myopts, args = getopt.getopt(sys.argv[2:],"",["db=","indexroots","fromtime=","roots=","log=","names=","contents=","query="])
    
@@ -392,14 +403,14 @@ if __name__ == "__main__":
     
     if action=="search":
         dbpath = 'fileindices.db'
-        query = u" 0 "
+        query = " 0 "
         for n,v in myopts:
             if n=="--db":
                 dbpath = v
             if n=="--names":
-                query = query + u" and ( attr='FileIndexItem->fileName' and value like '%%%s%%') "%v
+                query = query + " and ( attr='FileIndexItem->fileName' and value like '%%%s%%') "%v
             if n=="--contents":
-                query = query + u" and ( attr='FileIndexItem->fileContent' and value like '%%%s%%') "%v
+                query = query + " and ( attr='FileIndexItem->fileContent' and value like '%%%s%%') "%v
             if n=="--query":
 				try:
 					data = open(v, 'rb').read()
@@ -412,15 +423,15 @@ if __name__ == "__main__":
 					data = data.decode(encoding)
 				except:
 					logline( "Unexpected error while reading raw file:%s"% sys.exc_info()[0])			
-				queryf = data.split(u"\n")
+				queryf = data.split("\n")
 				for line in queryf:
 					line = line.strip()
-					if line.startswith(u"name:"):
+					if line.startswith("name:"):
 						nameq = line[5:] 
-						query = query + u"or ( attr='FileIndexItem->fileName' and value like '%%%s%%') "%nameq
-					if line.startswith(u"content:"):
+						query = query + "or ( attr='FileIndexItem->fileName' and value like '%%%s%%') "%nameq
+					if line.startswith("content:"):
 						contentq = line[8:]
-						query = query + u" or ( attr='FileIndexItem->fileContent' and value like '%%%s%%') "%contentq
+						query = query + " or ( attr='FileIndexItem->fileContent' and value like '%%%s%%') "%contentq
             harir = PyHarir(dbpath)
             results = harir.findConditions(query)
             for result in results:
@@ -438,7 +449,7 @@ if __name__ == "__main__":
         lastAccessTime = 0
 
         logfile = myopts["--log"] if "--log" in [x[0] for x in myopts] else "indexer.log"
-        logger = open(logfile,"w+")
+        logger = codecs.open(logfile, "w+", "utf-8")
         print "loging into ",logfile
 
         logline("\n-----------------------")
@@ -455,7 +466,7 @@ if __name__ == "__main__":
                 vals = [int(vi) for vi in v.split("/")] 
                 lastAccessTime = time.mktime(vals)
                 
-
+        roots = [repairPath(root) for root in roots]
         logline("roots:%s"%"\n\t\t".join(roots))
         logline("dbpath:%s"%dbpath)
         logline("indexroot:%s"%rootIndex)
